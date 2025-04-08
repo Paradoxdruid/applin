@@ -1,8 +1,9 @@
 import os
 
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"  # Hide the pygame welcome message
-import pygame
 import random
+
+import pygame
 
 # Initialize pygame and set up the window
 pygame.init()
