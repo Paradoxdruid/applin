@@ -40,9 +40,11 @@ clock = pygame.time.Clock()
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        # self.image = pygame.Surface((40, 40))
-        # self.image.fill((0, 255, 0))  # Green square
-        self.image = pygame.image.load("Applin40.png").convert_alpha()
+        try:
+            self.image = pygame.image.load("Applin40.png").convert_alpha()
+        except FileNotFoundError:
+            self.image = pygame.Surface((40, 40))
+            self.image.fill((0, 255, 0))  # Green square
         self.rect = self.image.get_rect()
 
     def update(self):
@@ -54,9 +56,11 @@ class Player(pygame.sprite.Sprite):
 class Collectible(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__()
-        # self.image = pygame.Surface((20, 20))
-        # self.image.fill((255, 0, 0))  # Red square
-        self.image = pygame.image.load("Fluffruit20.png").convert_alpha()
+        try:
+            self.image = pygame.image.load("Fluffruit20.png").convert_alpha()
+        except FileNotFoundError:
+            self.image = pygame.Surface((20, 20))
+            self.image.fill((255, 0, 0))  # Red square
         self.rect = self.image.get_rect(center=pos)
 
 
@@ -64,9 +68,11 @@ class Collectible(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__()
-        # self.image = pygame.Surface((20, 20))
-        # self.image.fill((255, 0, 0))  # Red square
-        self.image = pygame.image.load("Koffing20.png").convert_alpha()
+        try:
+            self.image = pygame.image.load("Koffing20.png").convert_alpha()
+        except FileNotFoundError:
+            self.image = pygame.Surface((20, 20))
+            self.image.fill((0, 0, 255))  # Blue square
         self.rect = self.image.get_rect(center=pos)
         self.speed = Settings.ENEMY_SPEED  # Default speed of the enemy
 
