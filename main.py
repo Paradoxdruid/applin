@@ -56,6 +56,16 @@ class Player(pygame.sprite.Sprite):
         # Update the player's position to follow the mouse
         self.rect.center = pygame.mouse.get_pos()
 
+    def evolve(self) -> None:
+        """Evolve the player by changing its image."""
+
+        try:
+            self.image = pygame.image.load("Flapple80.png").convert_alpha()
+        except FileNotFoundError:
+            self.image = pygame.Surface((80, 80))
+            self.image.fill((255, 255, 0))  # Yellow square
+        self.rect = self.image.get_rect(center=self.rect.center)
+
 
 class Collectible(pygame.sprite.Sprite):
     """Collectible sprite that increases the player's score when collected."""
@@ -202,6 +212,7 @@ while running:
     if score > Settings.WINNING_SCORE:
         score_text = font.render("YOU WIN", True, (255, 255, 255))
         screen.blit(score_text, (10, 10))
+        player.evolve()  # Evolve the player sprite
     elif score < Settings.LOSING_SCORE:
         score_text = font.render("YOU LOSE", True, (255, 255, 255))
         screen.blit(score_text, (10, 10))
