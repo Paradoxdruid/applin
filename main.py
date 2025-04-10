@@ -15,6 +15,8 @@ from dataclasses import dataclass
 
 @dataclass
 class Settings:
+    """Game settings and constants."""
+
     FPS: int = 60
     WINDOW_WIDTH: int = 800
     WINDOW_HEIGHT: int = 800
@@ -22,6 +24,8 @@ class Settings:
     COLLECTIBLE_SPAWN_RATE: int = 500
     ENEMY_SPAWN_RATE: int = 4000
     ENEMY_SPEED: float = 2.0
+    ENEMY_FAST_DISTANCE: int = 240
+    ENEMY_SLOW_DISTANCE: int = 100
     COLLECTIBLE_SCORE: int = 1
     ENEMY_PENALTY: int = 5
     WINNING_SCORE: int = 30
@@ -36,8 +40,9 @@ pygame.display.set_caption("Applin Sprite Game")
 clock = pygame.time.Clock()
 
 
-# Define the Player sprite that follows the mouse cursor
 class Player(pygame.sprite.Sprite):
+    """Player sprite that follows the mouse cursor."""
+
     def __init__(self):
         super().__init__()
         try:
@@ -47,14 +52,15 @@ class Player(pygame.sprite.Sprite):
             self.image.fill((0, 255, 0))  # Green square
         self.rect = self.image.get_rect()
 
-    def update(self):
+    def update(self) -> None:
         # Update the player's position to follow the mouse
         self.rect.center = pygame.mouse.get_pos()
 
 
-# Define the Collectible sprite that will disappear when collected
 class Collectible(pygame.sprite.Sprite):
-    def __init__(self, pos):
+    """Collectible sprite that increases the player's score when collected."""
+
+    def __init__(self, pos: tuple[int, int]):
         super().__init__()
         try:
             self.image = pygame.image.load("Fluffruit20.png").convert_alpha()
@@ -64,9 +70,10 @@ class Collectible(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=pos)
 
 
-# Define the Enemy sprite that will lower the player's score when touched
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, pos):
+    """Enemy sprite that decreases the player's score when touched."""
+
+    def __init__(self, pos: tuple[int, int]):
         super().__init__()
         try:
             self.image = pygame.image.load("Koffing20.png").convert_alpha()
@@ -76,7 +83,7 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=pos)
         self.speed = Settings.ENEMY_SPEED  # Default speed of the enemy
 
-    def update(self):
+    def update(self) -> None:
         # Move the enemy toward the player's position
         player_pos = player.rect.center
         direction_x = player_pos[0] - self.rect.centerx
@@ -84,9 +91,9 @@ class Enemy(pygame.sprite.Sprite):
         distance = (direction_x**2 + direction_y**2) ** 0.5
 
         # Adjust speed based on distance
-        if distance > 240:
+        if distance > Settings.ENEMY_FAST_DISTANCE:
             self.speed = 2 * Settings.ENEMY_SPEED  # Move quickly when far away
-        elif distance < 100:
+        elif distance < Settings.ENEMY_SLOW_DISTANCE:
             self.speed = 0.75 * Settings.ENEMY_SPEED  # Move slower when close
         else:
             self.speed = Settings.ENEMY_SPEED  # Default speed
@@ -148,6 +155,7 @@ pygame.time.set_timer(NEW_COLLECTIBLE_EVENT, Settings.COLLECTIBLE_SPAWN_RATE)
 NEW_ENEMY_EVENT = pygame.USEREVENT + 2
 pygame.time.set_timer(NEW_ENEMY_EVENT, Settings.ENEMY_SPAWN_RATE)
 
+# Hide the mouse cursor in the game window
 pygame.mouse.set_visible(False)
 
 # Main game loop
