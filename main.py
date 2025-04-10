@@ -1,15 +1,38 @@
 import os
 
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"  # Hide the pygame welcome message
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"  # Suppress pygame support prompt
+os.environ["SDL_AUDIODRIVER"] = "dsp"  # Use DSP audio driver for better performance
+
+import warnings
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", category=RuntimeWarning)
+    import pygame
+
 import random
 
-import pygame
+from enum import Enum
+
+
+class Settings(Enum):
+    FPS = 60
+    WINDOW_WIDTH = 800
+    WINDOW_HEIGHT = 800
+    BACKGROUND_COLOR = (30, 150, 30)
+    COLLECTIBLE_SPAWN_RATE = 500  # milliseconds
+    ENEMY_SPAWN_RATE = 4000  # milliseconds
+    ENEMY_SPEED = 2.0
+    COLLECTIBLE_SCORE = 1
+    ENEMY_PENALTY = 5
+    WINNING_SCORE = 30
+    LOSING_SCORE = 0
+
 
 # Initialize pygame and set up the window
 pygame.init()
-width, height = 800, 800
+width, height = Settings.WINDOW_WIDTH.value, Settings.WINDOW_HEIGHT.value
 screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Mouse Sprite Game")
+pygame.display.set_caption("Applin Sprite Game")
 clock = pygame.time.Clock()
 
 
@@ -25,17 +48,6 @@ class Player(pygame.sprite.Sprite):
     def update(self):
         # Update the player's position to follow the mouse
         self.rect.center = pygame.mouse.get_pos()
-
-    def enlarge(self, scale_factor=1.0):
-        # Define the scaling factor (1% larger means a factor of 1.01)
-
-        # Determine new dimensions based on the current image size
-        new_width = int(self.image.get_width() * scale_factor)
-        new_height = int(self.image.get_height() * scale_factor)
-        # Scale the image to the new dimensions
-        self.image = pygame.transform.scale(self.image, (new_width, new_height))
-        # Update the rect. Using center=self.rect.center maintains the sprite's center.
-        self.rect = self.image.get_rect(center=self.rect.center)
 
 
 # Define the Collectible sprite that will disappear when collected
@@ -56,6 +68,42 @@ class Enemy(pygame.sprite.Sprite):
         # self.image.fill((255, 0, 0))  # Red square
         self.image = pygame.image.load("Koffing20.png").convert_alpha()
         self.rect = self.image.get_rect(center=pos)
+        self.speed = Settings.ENEMY_SPEED.value  # Default speed of the enemy
+
+    def update(self):
+        # Move the enemy toward the player's position
+        player_pos = player.rect.center
+        direction_x = player_pos[0] - self.rect.centerx
+        direction_y = player_pos[1] - self.rect.centery
+        distance = (direction_x**2 + direction_y**2) ** 0.5
+
+        # Adjust speed based on distance
+        if distance > 240:
+            self.speed = 2 * Settings.ENEMY_SPEED.value  # Move quickly when far away
+        elif distance < 100:
+            self.speed = 0.75 * Settings.ENEMY_SPEED.value  # Move slower when close
+        else:
+            self.speed = Settings.ENEMY_SPEED.value  # Default speed
+
+        if distance != 0:  # Avoid division by zero
+            direction_x /= distance
+            direction_y /= distance
+
+        # Add random motion
+        random_offset_x = random.uniform(-1, 1)
+        random_offset_y = random.uniform(-1, 1)
+        direction_x += random_offset_x
+        direction_y += random_offset_y
+
+        # Normalize the direction again after adding randomness
+        distance = (direction_x**2 + direction_y**2) ** 0.5
+        if distance != 0:
+            direction_x /= distance
+            direction_y /= distance
+
+        # Move the enemy in the direction of the player
+        self.rect.x += int(direction_x * self.speed)
+        self.rect.y += int(direction_y * self.speed)
 
 
 # Create sprite groups for easy management
@@ -82,22 +130,24 @@ for _ in range(5):
     enemies.add(enemy)
 
 score = 0
+
+# Load font for displaying score
 font = pygame.font.SysFont(None, 36)
 
-# Set a timer event to add a new collectible every 2 seconds (2000 milliseconds)
+# Set a timer event to add a new collectible every 0.5 seconds (500 milliseconds)
 NEW_COLLECTIBLE_EVENT = pygame.USEREVENT + 1
-pygame.time.set_timer(NEW_COLLECTIBLE_EVENT, 500)
+pygame.time.set_timer(NEW_COLLECTIBLE_EVENT, Settings.COLLECTIBLE_SPAWN_RATE.value)
 
 # Set a timer event to add a new enemy every 4 seconds (4000 milliseconds)
 NEW_ENEMY_EVENT = pygame.USEREVENT + 2
-pygame.time.set_timer(NEW_ENEMY_EVENT, 4000)
+pygame.time.set_timer(NEW_ENEMY_EVENT, Settings.ENEMY_SPAWN_RATE.value)
 
 pygame.mouse.set_visible(False)
 
 # Main game loop
 running = True
 while running:
-    clock.tick(60)  # Limit the frame rate to 60 FPS
+    clock.tick(Settings.FPS.value)  # Limit the frame rate to 60 FPS
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -109,7 +159,7 @@ while running:
             all_sprites.add(collectible)
             collectibles.add(collectible)
         elif event.type == NEW_ENEMY_EVENT:
-            # When the timer event fires, add a new collectible at a random position
+            # When the timer event fires, add a new enemy at a random position
             pos = (random.randint(20, width - 20), random.randint(20, height - 20))
             enemy = Enemy(pos)
             all_sprites.add(enemy)
@@ -121,19 +171,25 @@ while running:
     # Check for collisions between the player and collectibles
     hits = pygame.sprite.spritecollide(player, collectibles, True)
     if hits:
-        player.enlarge()
-        score += len(hits)  # Increase score for each collectible hit
+        score += (
+            len(hits) * Settings.COLLECTIBLE_SCORE.value
+        )  # Increase score for each collectible hit
 
     # Check for collisions between the player and enemies
     enemy_hits = pygame.sprite.spritecollide(player, enemies, True)
     if enemy_hits:
-        score -= 5 * len(enemy_hits)  # Decrease score for each enemy hit
+        score -= (
+            len(enemy_hits) * Settings.ENEMY_PENALTY.value
+        )  # Decrease score for each enemy hit
 
     # Draw everything on the screen
-    screen.fill((30, 150, 30))  # Background color
+    screen.fill(Settings.BACKGROUND_COLOR.value)  # Background color
     all_sprites.draw(screen)
-    if score > 25:
+    if score > Settings.WINNING_SCORE.value:
         score_text = font.render("YOU WIN", True, (255, 255, 255))
+        screen.blit(score_text, (10, 10))
+    elif score < Settings.LOSING_SCORE.value:
+        score_text = font.render("YOU LOSE", True, (255, 255, 255))
         screen.blit(score_text, (10, 10))
     else:
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
