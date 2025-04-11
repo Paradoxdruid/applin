@@ -24,8 +24,10 @@ class Settings:
     COLLECTIBLE_SPAWN_RATE: int = 500
     ENEMY_SPAWN_RATE: int = 4000
     ENEMY_SPEED: float = 2.0
+    ENEMY_RANDOMNESS: float = 0.5
     ENEMY_FAST_DISTANCE: int = 240
     ENEMY_SLOW_DISTANCE: int = 100
+    COMPETITOR_SPEED: float = 3.0
     COLLECTIBLE_SCORE: int = 1
     ENEMY_PENALTY: int = 5
     WINNING_SCORE: int = 30
@@ -113,8 +115,12 @@ class Enemy(pygame.sprite.Sprite):
             direction_y /= distance
 
         # Add random motion
-        random_offset_x = random.uniform(-1, 1)
-        random_offset_y = random.uniform(-1, 1)
+        random_offset_x = random.uniform(
+            -Settings.ENEMY_RANDOMNESS, Settings.ENEMY_RANDOMNESS
+        )
+        random_offset_y = random.uniform(
+            -Settings.ENEMY_RANDOMNESS, Settings.ENEMY_RANDOMNESS
+        )
         direction_x += random_offset_x
         direction_y += random_offset_y
 
@@ -129,10 +135,51 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.y += int(direction_y * self.speed)
 
 
+class Competitor(pygame.sprite.Sprite):
+    """Competitor sprite that moves towards the nearest collectible."""
+
+    def __init__(self, pos: tuple[int, int]):
+        super().__init__()
+        try:
+            self.image = pygame.image.load("Applin4.png").convert_alpha()
+        except FileNotFoundError:
+            self.image = pygame.Surface((40, 40))
+            self.image.fill((255, 165, 0))  # Orange square
+        self.rect = self.image.get_rect(center=pos)
+        self.speed = Settings.COMPETITOR_SPEED
+
+    def update(self, collectibles: pygame.sprite.Group | None = None) -> None:
+        if collectibles:
+            # Find the nearest collectible
+            nearest_collectible = min(
+                collectibles,
+                key=lambda c: self.rect.centerx
+                - c.rect.centerx
+                + self.rect.centery
+                - c.rect.centery,
+            )
+            direction_x = nearest_collectible.rect.centerx - self.rect.centerx
+            direction_y = nearest_collectible.rect.centery - self.rect.centery
+            distance = (direction_x**2 + direction_y**2) ** 0.5
+
+            if distance != 0:  # Avoid division by zero
+                direction_x /= distance
+                direction_y /= distance
+
+            # Move the competitor towards the collectible
+            self.rect.x += int(direction_x * self.speed)
+            self.rect.y += int(direction_y * self.speed)
+
+            # Check for collision with the collectible
+            if self.rect.colliderect(nearest_collectible.rect):
+                nearest_collectible.kill()  # Remove the collectible on collision
+
+
 # Create sprite groups for easy management
 all_sprites: pygame.sprite.Group = pygame.sprite.Group()
 collectibles: pygame.sprite.Group = pygame.sprite.Group()
 enemies: pygame.sprite.Group = pygame.sprite.Group()
+competitors: pygame.sprite.Group = pygame.sprite.Group()
 
 # Create the player and add it to the group
 player = Player()
@@ -151,6 +198,13 @@ for _ in range(5):
     enemy = Enemy(pos)
     all_sprites.add(enemy)
     enemies.add(enemy)
+
+# Create a competitor and add it to the group
+competitor = Competitor(
+    ((random.randint(20, width - 20), random.randint(20, height - 20)))
+)
+all_sprites.add(competitor)
+competitors.add(competitor)
 
 score = 0
 
@@ -191,6 +245,10 @@ while running:
 
     # Update all sprites (player follows the mouse)
     all_sprites.update()
+
+    # Update competitors
+    for competitor in competitors:
+        competitor.update(collectibles)
 
     # Check for collisions between the player and collectibles
     hits = pygame.sprite.spritecollide(player, collectibles, True)
